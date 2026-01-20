@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Handwritten Digit Recognition</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      text-align: center;
+      width: 400px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    canvas {
+      border: 2px solid #333;
+      border-radius: 8px;
+      cursor: crosshair;
+      background: black;
+    }
+
+    .buttons {
+      margin-top: 15px;
+    }
+
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #45a049;
+    }
+
+    #result {
+      margin-top: 20px;
+      font-size: 20px;
+      font-weight: bold;
+      color: #222;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Digit Predictor</h1>
+    <canvas id="canvas" width="280" height="280"></canvas>
+    <div class="buttons">
+      <button onclick="predictDigit()">Predict</button>
+      <button onclick="clearCanvas()">Clear</button>
+    </div>
+    <p id="result">Draw a digit above!</p>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    let drawing = false;
+    canvas.addEventListener("mousedown", () => drawing = true);
+    canvas.addEventListener("mouseup", () => drawing = false);
+    canvas.addEventListener("mousemove", draw);
+
+    function draw(e) {
+      if (!drawing) return;
+      ctx.fillStyle = "white";
+      ctx.beginPath();
+      ctx.arc(e.offsetX, e.offsetY, 12, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function clearCanvas() {
+      ctx.fillStyle = "black";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      document.getElementById("result").innerText = "Draw a digit above!";
+    }
+
+    async function predictDigit() {
+      // Resize canvas to 28x28 grayscale
+      const smallCanvas = document.createElement("canvas");
+      smallCanvas.width = 28;
+      smallCanvas.height = 28;
+      const smallCtx = smallCanvas.getContext("2d");
+      smallCtx.drawImage(canvas, 0, 0, 28, 28);
+
+      const imgData = smallCtx.getImageData(0, 0, 28, 28).data;
+      let gray = [];
+      for (let i = 0; i < imgData.length; i += 4) {
+        gray.push(imgData[i]); // red channel (same for grayscale)
+      }
+
+      // Convert to 2D array
+      const imageArray = Array.from({length: 28}, (_, r) => gray.slice(r*28, (r+1)*28));
+
+      // Send to Flask API
+      const response = await fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: imageArray })
+      });
+
+      const result = await response.json();
+      document.getElementById("result").innerText = "Predicted Digit: " + result.digit;
+    }
+  </script>
+</body>
+</html>
