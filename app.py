@@ -1,12 +1,14 @@
-from flask import Flask , request , jsonify
+from flask import Flask , request , jsonify, send_from_directory
+from flask_cors import CORS
 from tensorflow.keras.models import load_model
 import numpy as np
 #load model
 model=load_model("mnist.h5")
 app=Flask(__name__)
+CORS(app)
 @app.route("/")
 def home():
-    return app.send_static_file("index.html")
+    return send_from_directory("static", "index.html")
 @app.route("/predict",methods=['POST'])
 def predict():
     data=request.json["image"]
